@@ -66,20 +66,21 @@ echo "nameserver 1.1.1.1" > /etc/resolv.conf
 apt update -qq
 apt install -y curl git sudo procps ca-certificates build-essential openssh-server netcat-openbsd nano libvips-dev
 
-# Clean up existing warnings first
-sed -i '/WARNING: You are logged in as ROOT/,/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/d' /root/.bashrc 2>/dev/null
-sed -i '/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/d' /root/.bashrc 2>/dev/null
+# --- ROOT WARNING (Aggressive Cleanup + Re-write) ---
+# Remove any old warnings from bashrc to prevent duplication
+if [ -f "/root/.bashrc" ]; then
+    sed -i '/--- CLAW MISSION ROOT WARNING START ---/,/--- CLAW MISSION ROOT WARNING END ---/d' /root/.bashrc
+fi
 
-# Warning for root users (Guarded)
-if ! grep -q "WARNING: You are logged in as ROOT" /root/.bashrc 2>/dev/null; then
 cat << 'ROOTBASH' >> /root/.bashrc
+# --- CLAW MISSION ROOT WARNING START ---
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 echo "WARNING: You are logged in as ROOT."
 echo "Claw-Mission runs as the dedicated 'openclaw' user."
 echo "Please switch users by running: su - openclaw"
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+# --- CLAW MISSION ROOT WARNING END ---
 ROOTBASH
-fi
 
 # Dedicated User
 if ! id "openclaw" &>/dev/null; then
@@ -110,13 +111,28 @@ nvm install 22
 nvm use 22
 nvm alias default 22
 
-# Install Core Tools (Fix ENOTEMPTY by manual cleanup)
-echo "[*] Ensuring core node tools are present..."
-# Global modules location varies, we find it dynamically
-NPM_G_ROOT=$(npm root -g)
-rm -rf "$NPM_G_ROOT/typescript" "$NPM_G_ROOT/pm2" "$NPM_G_ROOT/tsx" 2>/dev/null
-npm cache clean --force 2>/dev/null || true
-npm install -g pm2 tsx typescript --force --no-audit
+# --- CORE TOOLS INSTALL (Bypass if present to avoid ENOTEMPTY) ---
+if command -v pm2 >/dev/null 2>&1 && command -v tsx >/dev/null 2>&1 && command -v tsc >/dev/null 2>&1; then
+    echo "[*] Core tools (pm2, tsx, typescript) already present. Skipping install..."
+else
+    echo "[*] Installing core node tools..."
+    NPM_G_ROOT=$(npm root -g)
+    # Manual deep cleaning of target folders
+    rm -rf "$NPM_G_ROOT/typescript" "$NPM_G_ROOT/pm2" "$NPM_G_ROOT/tsx" 2>/dev/null
+    rm -rf "$NPM_G_ROOT/../.npm" 2>/dev/null
+    
+    # Try install with one more guard
+    npm install -g pm2 tsx typescript --no-audit || {
+        echo "[!] Primary install failed, attempting individual installs..."
+        npm install -g pm2 --no-audit
+        npm install -g tsx --no-audit
+        npm install -g typescript --no-audit
+    }
+fi
+
+# Cleanup PM2 state from any previous failed runs
+pm2 kill 2>/dev/null || true
+rm -rf $HOME/.pm2/dump.pm2 2>/dev/null
 
 # Networking Shim
 cat > $HOME/.node_bypass.js << 'BYPASS'
