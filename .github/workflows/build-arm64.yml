@@ -1,0 +1,71 @@
+name: 🚀 Build ARM64 Artifacts (Phone optimized)
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Once a day
+  workflow_dispatch: # Manual run
+
+permissions:
+  contents: write
+
+jobs:
+  build-apps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build Mission Control (ARM64)
+        run: |
+          mkdir -p artifacts
+          # Configure git to prevent HTTP 500 RPC failed errors
+          git config --global http.postBuffer 1048576000
+          git config --global http.version HTTP/1.1
+          # Attempt shallow clone first, fallback to full clone if shallow pack fails
+          git clone --depth 1 https://github.com/builderz-labs/mission-control.git mc-build || git clone https://github.com/builderz-labs/mission-control.git mc-build
+          docker run --rm --privileged --platform linux/arm64 \
+            -v $(pwd)/mc-build:/app \
+            -w /app \
+            arm64v8/node:22-bookworm \
+            /bin/bash -c '\
+              export NODE_LLAMA_CPP_SKIP_POSTINSTALL=1 && \
+              export NEXT_TELEMETRY_DISABLED=1 && \
+              npm install -g pnpm && \
+              npm install --legacy-peer-deps && \
+              rm -rf node_modules/node-llama-cpp node_modules/.pnpm/node-llama-cpp* 2>/dev/null; \
+              npm run build && \
+              tar -czf mission-control-arm64.tar.gz .next node_modules package.json src \
+            '
+          # Split into 50MB chunks to bypass GitHub limit
+          split -b 50M mc-build/mission-control-arm64.tar.gz ./artifacts/mission-control-arm64.tar.gz.part-
+
+      - name: Extract OpenClaw (ARM64) from Official Image
+        run: |
+          docker pull --platform linux/arm64 ghcr.io/openclaw/openclaw:latest
+          docker create --name oc-extract --platform linux/arm64 ghcr.io/openclaw/openclaw:latest
+          mkdir -p artifacts
+          # Detect actual app directory inside container
+          APP_DIR=$(docker inspect --format='{{.Config.WorkingDir}}' oc-extract)
+          if [ -z "$APP_DIR" ] || [ "$APP_DIR" == "/" ]; then APP_DIR="/app"; fi
+          echo "Detected App Directory: $APP_DIR"
+          
+          mkdir -p oc-extract-dir
+          docker cp oc-extract:$APP_DIR/. ./oc-extract-dir/ || docker cp oc-extract:/usr/src/app/. ./oc-extract-dir/ || docker cp oc-extract:/home/node/app/. ./oc-extract-dir/
+          docker rm oc-extract
+          
+          cd oc-extract-dir && tar -czf ../openclaw-arm64.tar.gz .
+          cd ..
+          split -b 50M openclaw-arm64.tar.gz ./artifacts/openclaw-arm64.tar.gz.part-
+
+
+
+      - name: Deploy to Builds Branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./artifacts
+          publish_branch: builds
+          enable_jekyll: true
