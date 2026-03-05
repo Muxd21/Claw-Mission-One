@@ -66,7 +66,8 @@ echo "nameserver 1.1.1.1" > /etc/resolv.conf
 apt update -qq
 apt install -y curl git sudo procps ca-certificates build-essential openssh-server netcat-openbsd nano libvips-dev
 
-# Warning for root users
+# Warning for root users (Guarded)
+if ! grep -q "WARNING: You are logged in as ROOT" /root/.bashrc 2>/dev/null; then
 cat << 'ROOTBASH' >> /root/.bashrc
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 echo "WARNING: You are logged in as ROOT."
@@ -74,6 +75,7 @@ echo "Claw-Mission runs as the dedicated 'openclaw' user."
 echo "Please switch users by running: su - openclaw"
 echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 ROOTBASH
+fi
 
 # Dedicated User
 if ! id "openclaw" &>/dev/null; then
@@ -104,8 +106,9 @@ nvm install 22
 nvm use 22
 nvm alias default 22
 
-# Install Core Tools
-npm install -g pm2 tsx typescript --no-audit
+# Install Core Tools (Force to override existing/broken)
+echo "[*] Ensuring core node tools are present..."
+npm install -g pm2 tsx typescript --force --no-audit
 
 # Networking Shim
 cat > $HOME/.node_bypass.js << 'BYPASS'
