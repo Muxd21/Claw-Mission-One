@@ -79,11 +79,11 @@
             <div class="app-card">
                 <div class="app-icon">🛸</div>
                 <h2>Mission Control</h2>
-                <p>The central hub for agent management, task tracking, and specialized AI skill orchestration.</p>
+                <p>Elite agent orchestration dashboard. Track tasks, manage skills, and oversee your AI fleet from a single glass pane.</p>
                 <div class="app-meta">
                     <div class="meta-item">
-                        <b>Endpoint</b>
-                        <span id="mc-url">Loading...</span>
+                        <b>Login</b>
+                        <span>admin : admin</span>
                     </div>
                     <div class="meta-item">
                         <b>Port</b>
@@ -95,14 +95,13 @@
 
             <!-- OpenClaw Gateway Card -->
             <div class="app-card">
-                <div class="app-icon">⚡</div>
+                <div class="app-icon">🦞</div>
                 <h2>OpenClaw Gateway</h2>
-                <p>Unified AI agent gateway with model federation, secure model management, and built-in control
-                    interface.</p>
+                <p>Unified AI agent gateway. High-performance model federation with secure token-based authentication and real-time monitoring.</p>
                 <div class="app-meta">
                     <div class="meta-item">
-                        <b>Endpoint</b>
-                        <span id="oc-url">Loading...</span>
+                        <b>Auth</b>
+                        <span>Token Based</span>
                     </div>
                     <div class="meta-item">
                         <b>Port</b>
@@ -114,7 +113,13 @@
         </div>
 
         <div class="shell-section">
-            <h3>💻 Infrastructure Access</h3>
+            <h3>🚀 One-Command Launch</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">To start your entire stack (Bridges, SSH, and AI Services) from Termux:</p>
+            <div class="code-block" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+                <code style="color: #10b981;">./claw.sh</code>
+            </div>
+
+            <h3 style="margin-top: 2.5rem;">💻 Infrastructure Access</h3>
             <div class="code-block">
                 <button class="copy-btn" onclick="copySSH()">Copy SSH</button>
                 <code id="ssh-cmd">ssh -p 2222 root@0.0.0.0</code>
@@ -130,8 +135,12 @@
                     <p id="tailscale-ip">Searching...</p>
                 </div>
                 <div class="term-item">
-                    <h4>SSH Credentials</h4>
+                    <h4>SSH Login</h4>
                     <p>root : root</p>
+                </div>
+                <div class="term-item">
+                    <h4>Gateway Token</h4>
+                    <p>See ~/claw-mission-token.txt</p>
                 </div>
             </div>
         </div>
