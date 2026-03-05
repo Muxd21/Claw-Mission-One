@@ -171,23 +171,39 @@ REPO_BASE="https://raw.githubusercontent.com/Muxd21/Claw-Mission-One/builds"
 
 binary_install() {
     APP_NAME=$1
+    if [ "$SKIP_BINARY" = "1" ] || [ "$SKIP_BINARY" = "$APP_NAME" ]; then
+        echo "[*] SKIP_BINARY detected. Skipping pre-built ${APP_NAME}..."
+        return 1
+    fi
+
     echo "[*] Checking for pre-built ${APP_NAME}..."
     if curl --output /dev/null --silent --head --fail "${REPO_BASE}/${APP_NAME}-arm64.tar.gz.part-aa"; then
-        echo "[🚀] Binary parts found! Downloading..."
+        echo "[🚀] Binary parts found! Downloading (this may take a few minutes)..."
         mkdir -p "$HOME/${APP_NAME}" && cd "$HOME/${APP_NAME}"
+        
+        # Download parts
         for part in {a..z}{a..z}; do
             PART_FILE="${APP_NAME}-arm64.tar.gz.part-${part}"
             if curl --output /dev/null --silent --head --fail "${REPO_BASE}/${PART_FILE}"; then
+                echo "    -> Receiving ${PART_FILE}..."
                 wget -q "${REPO_BASE}/${PART_FILE}" -O "${PART_FILE}"
             else
                 break
             fi
         done
-        cat ${APP_NAME}-arm64.tar.gz.part-* > archive.tar.gz
-        tar -xzf archive.tar.gz
-        rm archive.tar.gz ${APP_NAME}-arm64.tar.gz.part-*
+        
+        echo "[📦] Extracting ${APP_NAME} (Streaming to save memory)..."
+        # Optimized: Stream cat into tar to avoid massive intermediate file
+        cat ${APP_NAME}-arm64.tar.gz.part-* | tar -xz || { 
+            echo "[!] Extraction failed. Disk full or OOM?"
+            return 1 
+        }
+        
+        echo "[✓] Extraction complete. Cleaning up parts..."
+        rm -f ${APP_NAME}-arm64.tar.gz.part-*
         return 0
     else
+        echo "[!] No binary found for ${APP_NAME} on this architecture."
         return 1
     fi
 }
