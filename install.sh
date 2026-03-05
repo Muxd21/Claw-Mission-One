@@ -300,27 +300,90 @@ EOF
     GUEST_TOKEN=$(cat $PREFIX/var/lib/proot-distro/installed-rootfs/debian/home/openclaw/.openclaw_token 2>/dev/null || echo "Token not found")
     echo "$GUEST_TOKEN" > ~/claw-mission-token.txt
 
-    # Helper script for easy login
-    cat << 'LOGIN' > ~/claw.sh
+    # =================================================================
+    # THE ONE COMMAND: ~/claw.sh
+    # Starts EVERYTHING: bridges, SSH, PM2 services, then drops into shell
+    # =================================================================
+    cat << 'LAUNCHER' > ~/claw.sh
 #!/data/data/com.termux/files/usr/bin/bash
-echo "Logging into Claw-Mission Operator Profile..."
+clear
+echo "=========================================================="
+echo "🛸 CLAW-MISSION-ONE: STARTING ALL SYSTEMS 🛸"
+echo "=========================================================="
+
+# --- STEP 1: Network Bridges (Termux host side) ---
+echo ""
+echo "[1/3] 🌐 Starting network bridges..."
+pkill -f "socat TCP4-LISTEN" 2>/dev/null || true
+sleep 0.5
+nohup socat TCP4-LISTEN:2222,reuseaddr,fork,bind=0.0.0.0 TCP4:127.0.0.1:2222 > /dev/null 2>&1 &
+nohup socat TCP4-LISTEN:3000,reuseaddr,fork,bind=0.0.0.0 TCP4:127.0.0.1:3000 > /dev/null 2>&1 &
+nohup socat TCP4-LISTEN:18789,reuseaddr,fork,bind=0.0.0.0 TCP4:127.0.0.1:18789 > /dev/null 2>&1 &
+echo "      ✓ SSH:2222  MC:3000  Gateway:18789"
+
+# --- STEP 2: Start SSH + PM2 inside Debian ---
+echo ""
+echo "[2/3] 🚀 Starting services inside Debian..."
+proot-distro login debian -- bash -c '
+  # Start SSH daemon
+  mkdir -p /run/sshd
+  /usr/sbin/sshd 2>/dev/null
+  echo "      ✓ SSH daemon started"
+
+  # Switch to openclaw and start PM2
+  su - openclaw -c "
+    export NVM_DIR=\"\$HOME/.nvm\"
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
+    export NODE_OPTIONS=\"--require \$HOME/.node_bypass.js\"
+
+    pm2 delete all 2>/dev/null || true
+    pm2 start ~/ecosystem.config.js
+    pm2 save
+    echo \"      ✓ PM2 services launched\"
+    echo \"\"
+    pm2 status
+  "
+'
+
+# --- STEP 3: Status Report ---
+echo ""
+echo "[3/3] ✅ All systems online!"
+echo ""
+echo "=========================================================="
+echo "  📡 SSH:              ssh -p 2222 root@<YOUR_IP>"
+echo "  🖥  Mission Control:  http://<YOUR_IP>:3000"
+echo "  🦞 OpenClaw Gateway: http://<YOUR_IP>:18789"
+echo "  🔑 Token:            $(cat ~/claw-mission-token.txt 2>/dev/null || echo 'see ~/.openclaw_token')"
+echo "=========================================================="
+echo ""
+echo "Dropping into operator shell... (type 'exit' to leave)"
+echo ""
+
+# Drop into the openclaw user shell
 proot-distro login debian --user openclaw
-LOGIN
+LAUNCHER
     chmod +x ~/claw.sh
-    
+
     clear
     echo "=========================================================="
-    echo "🛸 CLAW-MISSION-ONE SUCCESSFUL 🛸"
+    echo "🛸 CLAW-MISSION-ONE INSTALLED SUCCESSFULLY 🛸"
     echo "=========================================================="
-    echo "Gateway Token has been saved to: ~/claw-mission-token.txt"
-    echo "Value: $GUEST_TOKEN"
+    echo "Gateway Token: $GUEST_TOKEN"
+    echo "(saved to ~/claw-mission-token.txt)"
     echo ""
-    echo "1. To manage the server, type exactly:"
-    echo "   ./claw.sh"
+    echo ">>> TO START EVERYTHING, just run:"
     echo ""
-    echo "2. Dashboards (If Tailscale is connected):"
-    echo "   >> Mission Control: http://<PHONE_IP>:3000"
-    echo "   >> OpenClaw UI:    http://<PHONE_IP>:18789"
+    echo "    ./claw.sh"
+    echo ""
+    echo "That single command will:"
+    echo "  ✓ Start network bridges (SSH, MC, Gateway)"
+    echo "  ✓ Launch SSH daemon"
+    echo "  ✓ Launch Mission Control + OpenClaw Gateway via PM2"
+    echo "  ✓ Drop you into the operator shell"
+    echo ""
+    echo "Dashboards (once Tailscale is connected):"
+    echo "  >> Mission Control: http://<PHONE_IP>:3000"
+    echo "  >> OpenClaw UI:     http://<PHONE_IP>:18789"
     echo "=========================================================="
     exit 0
 fi
