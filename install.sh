@@ -66,6 +66,10 @@ echo "nameserver 1.1.1.1" > /etc/resolv.conf
 apt update -qq
 apt install -y curl git sudo procps ca-certificates build-essential openssh-server netcat-openbsd nano libvips-dev
 
+# Clean up existing warnings first
+sed -i '/WARNING: You are logged in as ROOT/,/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/d' /root/.bashrc 2>/dev/null
+sed -i '/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/d' /root/.bashrc 2>/dev/null
+
 # Warning for root users (Guarded)
 if ! grep -q "WARNING: You are logged in as ROOT" /root/.bashrc 2>/dev/null; then
 cat << 'ROOTBASH' >> /root/.bashrc
@@ -106,8 +110,12 @@ nvm install 22
 nvm use 22
 nvm alias default 22
 
-# Install Core Tools (Force to override existing/broken)
+# Install Core Tools (Fix ENOTEMPTY by manual cleanup)
 echo "[*] Ensuring core node tools are present..."
+# Global modules location varies, we find it dynamically
+NPM_G_ROOT=$(npm root -g)
+rm -rf "$NPM_G_ROOT/typescript" "$NPM_G_ROOT/pm2" "$NPM_G_ROOT/tsx" 2>/dev/null
+npm cache clean --force 2>/dev/null || true
 npm install -g pm2 tsx typescript --force --no-audit
 
 # Networking Shim
