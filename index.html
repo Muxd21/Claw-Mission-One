@@ -79,7 +79,8 @@
             <div class="app-card">
                 <div class="app-icon">🛸</div>
                 <h2>Mission Control</h2>
-                <p>Elite agent orchestration dashboard. Track tasks, manage skills, and oversee your AI fleet from a single glass pane.</p>
+                <p>Elite agent orchestration dashboard. Track tasks, manage skills, and oversee your AI fleet from a
+                    single glass pane.</p>
                 <div class="app-meta">
                     <div class="meta-item">
                         <b>Login</b>
@@ -89,6 +90,10 @@
                         <b>Port</b>
                         3000
                     </div>
+                    <div class="meta-item">
+                        <b>URL</b>
+                        <span id="mc-url">Searching...</span>
+                    </div>
                 </div>
                 <a href="#" id="mc-btn" class="launch-btn" target="_blank">Enter Control Deck</a>
             </div>
@@ -97,7 +102,8 @@
             <div class="app-card">
                 <div class="app-icon">🦞</div>
                 <h2>OpenClaw Gateway</h2>
-                <p>Unified AI agent gateway. High-performance model federation with secure token-based authentication and real-time monitoring.</p>
+                <p>Unified AI agent gateway. High-performance model federation with secure token-based authentication
+                    and real-time monitoring.</p>
                 <div class="app-meta">
                     <div class="meta-item">
                         <b>Auth</b>
@@ -107,6 +113,10 @@
                         <b>Port</b>
                         18789
                     </div>
+                    <div class="meta-item">
+                        <b>URL</b>
+                        <span id="oc-url">Searching...</span>
+                    </div>
                 </div>
                 <a href="#" id="oc-btn" class="launch-btn" target="_blank">Open Gateway UI</a>
             </div>
@@ -114,7 +124,8 @@
 
         <div class="shell-section">
             <h3>🚀 One-Command Launch</h3>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">To start your entire stack (Bridges, SSH, and AI Services) from Termux:</p>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">To start your entire stack (Bridges, SSH,
+                and AI Services) from Termux:</p>
             <div class="code-block" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
                 <code style="color: #10b981;">./claw.sh</code>
             </div>
@@ -167,14 +178,21 @@
         }
 
         function refreshLinks(ip) {
-            document.getElementById('tailscale-ip').innerText = ip;
-            document.getElementById('mc-url').innerText = `${ip}:3000`;
-            document.getElementById('oc-url').innerText = `${ip}:18789`;
+            const tailscaleP = document.getElementById('tailscale-ip');
+            const mcUrl = document.getElementById('mc-url');
+            const ocUrl = document.getElementById('oc-url');
+            const mcBtn = document.getElementById('mc-btn');
+            const ocBtn = document.getElementById('oc-btn');
+            const sshCmd = document.getElementById('ssh-cmd');
 
-            document.getElementById('mc-btn').href = `http://${ip}:3000`;
-            document.getElementById('oc-btn').href = `http://${ip}:18789`;
+            if (tailscaleP) tailscaleP.innerText = ip;
+            if (mcUrl) mcUrl.innerText = `${ip}:3000`;
+            if (ocUrl) ocUrl.innerText = `${ip}:18789`;
 
-            document.getElementById('ssh-cmd').innerText = `ssh -p 2222 root@${ip}`;
+            if (mcBtn) mcBtn.href = `http://${ip}:3000`;
+            if (ocBtn) ocBtn.href = `http://${ip}:18789`;
+
+            if (sshCmd) sshCmd.innerText = `ssh -p 2222 root@${ip}`;
         }
 
         function updateIP() {
