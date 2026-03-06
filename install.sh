@@ -66,10 +66,17 @@ echo "nameserver 1.1.1.1" > /etc/resolv.conf
 apt update -qq
 apt install -y curl git sudo procps ca-certificates build-essential openssh-server netcat-openbsd nano libvips-dev
 
-# --- ROOT WARNING (Aggressive Cleanup + Re-write) ---
-# Remove any old warnings from bashrc to prevent duplication
+# --- ROOT WARNING (Aggressive Nuke + Re-write) ---
+# This cleans up the "wall of text" from previous failed attempts
 if [ -f "/root/.bashrc" ]; then
+    # Delete the MARKED blocks
     sed -i '/--- CLAW MISSION ROOT WARNING START ---/,/--- CLAW MISSION ROOT WARNING END ---/d' /root/.bashrc
+    # Delete any lingering UNMARKED blocks (based on content)
+    sed -i '/WARNING: You are logged in as ROOT/d' /root/.bashrc
+    sed -i '/Claw-Mission runs as the dedicated/d' /root/.bashrc
+    sed -i '/Please switch users by running: su - openclaw/d' /root/.bashrc
+    # Clean up empty line artifacts
+    sed -i '/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/d' /root/.bashrc
 fi
 
 cat << 'ROOTBASH' >> /root/.bashrc
@@ -280,7 +287,7 @@ fi
 GW
 chmod +x $HOME/openclaw/start-gw.sh
 
-# PM2 Ecosystem (token is baked in at install time, not via shell variable)
+# PM2 Ecosystem (Memory Optimized to prevent Termux Signal 9)
 cat > $HOME/ecosystem.config.js << ECO
 module.exports = {
   apps: [
@@ -289,13 +296,15 @@ module.exports = {
       cwd: '/home/openclaw/mission-control',
       script: 'bash',
       args: 'start-mc.sh',
+      max_memory_restart: '300M',
       env: {
         HOST: '0.0.0.0',
         NEXTAUTH_SECRET: 'secret',
         LOCAL_AUTH_TOKEN: 'clawone',
         ADMIN_PASSWORD: 'admin',
         OPENCLAW_GATEWAY_URL: 'ws://127.0.0.1:18789',
-        OPENCLAW_GATEWAY_TOKEN: '${GW_TOKEN}'
+        OPENCLAW_GATEWAY_TOKEN: '${GW_TOKEN}',
+        NODE_OPTIONS: '--max-old-space-size=256'
       }
     },
     {
@@ -303,9 +312,11 @@ module.exports = {
       cwd: '/home/openclaw/openclaw',
       script: 'bash',
       args: 'start-gw.sh',
+      max_memory_restart: '400M',
       env: {
         OPENCLAW_STATE_DIR: '/home/openclaw/.openclaw',
-        OPENCLAW_GATEWAY_TOKEN: '${GW_TOKEN}'
+        OPENCLAW_GATEWAY_TOKEN: '${GW_TOKEN}',
+        NODE_OPTIONS: '--max-old-space-size=256'
       }
     }
   ]
